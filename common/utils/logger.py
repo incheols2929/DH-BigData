@@ -2,6 +2,12 @@
 # -*- coding: utf-8 -*-
 import datetime as dt
 import os
+import urllib3.exceptions
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+
 
 # 프로젝트 디렉토리와 logs 폴더 경로 설정
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -34,3 +40,42 @@ def create_new_logfile():
         with open(filename, 'w', encoding='utf-8') as f:
             f.write(f'=== 로그 시작: {dt.datetime.now().strftime("%Y-%m-%d")} ===\n')
         write_log(f'새 로그 파일이 생성되었습니다: {filename}')
+
+
+def safe_http_request(url, **kwargs):
+    """안전한 HTTP 요청 함수"""
+    try:
+        # 재시도 전략 설정
+        retry_strategy = Retry(
+            total=3,
+            status_forcelist=[429, 500, 502, 503, 504],
+            method_whitelist=["HEAD", "GET", "OPTIONS"]
+        )
+
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session = requests.Session()
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+
+        # User-Agent 헤더 추가
+        headers = kwargs.get('headers', {})
+        headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        })
+        kwargs['headers'] = headers
+
+        response = session.get(url, timeout=30, **kwargs)
+        return response
+
+    except urllib3.exceptions.HeaderParsingError as e:
+        write_log(f"헤더 파싱 에러 발생 - URL: {url}")
+        write_log(f"헤더 파싱 에러 상세: {str(e)}")
+        return None
+    except requests.exceptions.RequestException as e:
+        write_log(f"HTTP 요청 에러 - URL: {url}")
+        write_log(f"요청 에러 상세: {str(e)}")
+        return None
+    except Exception as e:
+        write_log(f"예상치 못한 에러 - URL: {url}")
+        write_log(f"에러 상세: {str(e)}")
+        return None

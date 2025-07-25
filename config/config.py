@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import multiprocessing
+import logging
+
 """
     @packageName : file
     @fileName : config.py
@@ -13,6 +15,8 @@ import multiprocessing
 """
     네이버 
 """
+
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 MODEL_PATH = 'common/model/word2vec.model'
 
